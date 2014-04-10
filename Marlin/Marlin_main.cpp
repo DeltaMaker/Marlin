@@ -1109,7 +1109,7 @@ static void engage_z_probe() {
     #ifdef Z_PROBE_PIN
       destination[X_AXIS] = 0;
       destination[Y_AXIS] = 0;
-      destination[Z_AXIS] = 30;
+      destination[Z_AXIS] = Z_RAISE_BEFORE_PROBING;
       prepare_move_raw();
       st_synchronize();
     #else
@@ -1148,7 +1148,7 @@ static void retract_z_probe() {
     #ifdef Z_PROBE_PIN
       destination[X_AXIS] = 0;
       destination[Y_AXIS] = 0;
-      destination[Z_AXIS] = 30;
+      destination[Z_AXIS] = Z_RAISE_BEFORE_PROBING;
       prepare_move_raw();
       st_synchronize();
     #else
