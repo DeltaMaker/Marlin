@@ -247,10 +247,13 @@ int EtoPPressure=0;
 
 #ifdef DELTA
 float delta[3] = {0.0, 0.0, 0.0};
+// maximum count for each axis is to prevent detla transformation from exceeding the upper motion limit.
+const float delta_max_count = sqrt( sq(DELTA_DIAGONAL_ROD) - sq(DELTA_RADIUS) ) + MANUAL_Z_HOME_POS;
 #endif
 
 #ifdef NONLINEAR_BED_LEVELING
 float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+float z_probe_offset[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 #endif
 
 //===========================================================================
@@ -883,8 +886,112 @@ static void set_bed_level_equation(float z_at_xLeft_yFront, float z_at_xRight_yF
 }
 #endif // ACCURATE_BED_LEVELING
 
+
+// *
+// * Support solenoid-based touch probe that require engaging and retracting for each probed point.
+// *
+#ifdef Z_PROBE_PIN
+void probe_engage(int d = 75) {  //lower z probe
+  digitalWrite(Z_PROBE_PIN, HIGH);
+  delay(d);
+}
+void probe_retract(int d = 150) {  // raise z probe
+  digitalWrite(Z_PROBE_PIN, LOW);
+  delay(d);
+}
+bool probe_in_contact() { // the touch probe switch is wired to the Z_MIN_PIN
+  return (READ(Z_MIN_PIN) != Z_MIN_ENDSTOP_INVERTING);
+}
+bool probe_tap() {  // tap the probe by quickly lowering and raising it.
+    // return true if the probe strikes the bed, false if not.
+    probe_engage();
+    bool touch = probe_in_contact();
+    probe_retract();
+    return touch;
+}
+bool probe_engage_above_bed() {  // engage the probe, expecting it to miss the bed.
+  // retry engage/retract in attempt to detect non-contact
+  for (int retry = 20; retry > 0; retry--) {
+    probe_engage();
+    if ( !probe_in_contact() ) return true;
+    probe_retract();
+  }
+  SERIAL_PROTOCOLLN("Touch Probe ERROR");
+  return false;
+}
+bool probe_ready() { // return true if the touch probe properly detects non-contact
+  bool ready = probe_engage_above_bed();
+  probe_retract();
+  if (ready) SERIAL_PROTOCOLLN("Touch Probe READY");
+  return ready;
+}
+#endif //Z_PROBE_PIN
+
+
+#ifdef NONLINEAR_BED_LEVELING
+
+void init_z_probe_offset(float z_offset) {
+  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
+    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++)
+      z_probe_offset[x][y] = z_offset;
+}
+// print the manually set z_probe_offset correction
+static void print_z_probe_offset() {
+  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) {
+    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+      SERIAL_PROTOCOL_F(z_probe_offset[x][y], 2);
+      if (x + 1 < ACCURATE_BED_LEVELING_POINTS) SERIAL_PROTOCOLPGM(",");
+      SERIAL_PROTOCOLPGM(" ");
+    }
+    SERIAL_ECHOLN("");
+  }
+}
+void adjust_heightmap(int x, int y, float dz) {
+  int half = (ACCURATE_BED_LEVELING_POINTS - 1) / 2;
+  if ((x != half) || (y != half)) {  //do not adjust at bed center
+    bed_level[x][y] += dz;
+    z_probe_offset[x][y] += dz;
+    SERIAL_ECHOPGM("["); SERIAL_ECHO(x); SERIAL_ECHOPGM("]["); SERIAL_ECHO(y); 
+    SERIAL_ECHOPGM("] + "); SERIAL_ECHO(dz);
+    SERIAL_ECHOPGM(" = ");
+    SERIAL_ECHOLN(z_probe_offset[x][y]);
+  }
+}
+
+void adjust_z_probe_offset(float dz) {
+  if (abs(current_position[X_AXIS]) + abs(current_position[Y_AXIS]) < 1.0) {  // near bed center
+    SERIAL_PROTOCOLLN("setting nozzle height");  // uniform adjustment
+     for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
+      for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+        bed_level[x][y] += dz;
+        z_probe_offset[x][y] += dz;
+      }
+  }
+  else {
+    SERIAL_PROTOCOLLN("setting z_probe_offset");  // localized adjustment
+    float x = (current_position[X_AXIS] - LEFT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_X;
+    float y = (current_position[Y_AXIS] - FRONT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_Y;
+    float fract_x = x - (int) x;
+    float fract_y = y - (int) y;
+    //SERIAL_ECHOPGM("x = "); SERIAL_ECHO(x);
+    //SERIAL_ECHOPGM(", y = "); SERIAL_ECHOLN(y);
+    //SERIAL_ECHOPGM("fract_x = "); SERIAL_ECHO(fract_x);
+    //SERIAL_ECHOPGM(", fract_x = "); SERIAL_ECHOLN(fract_x);
+    //SERIAL_ECHOPGM("dz = "); SERIAL_ECHOLN(dz);
+    adjust_heightmap ((int) x, (int) y, (1.0 - fract_x) * (1.0 - fract_y) * dz);
+    adjust_heightmap ((int) x, (int) y + 1, fract_x * (1.0 - fract_y) * dz);
+    adjust_heightmap ((int) x + 1, (int) y, (1.0 - fract_x) * fract_y * dz);
+    adjust_heightmap ((int) x + 1, (int) y + 1, fract_x * fract_y * dz);
+  }
+}
+#endif
+
 static void run_z_probe() {
     plan_bed_level_matrix.set_to_identity();
+
+#ifdef Z_PROBE_PIN
+   probe_engage_above_bed();  // lower touch probe (be sure to retract it within 10 seconds)
+#endif //Z_PROBE_PIN
 
 #ifdef DELTA
     enable_endstops(true);
@@ -906,7 +1013,7 @@ static void run_z_probe() {
     plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
 #else
     feedrate = homing_feedrate[Z_AXIS];
-
+    
     // move down until you find the bed
     float zPosition = -10;
     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate/60, active_extruder);
@@ -931,6 +1038,10 @@ static void run_z_probe() {
     // make sure the planner knows where we are as it may be a bit different than we last said to move to
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 #endif
+
+#ifdef Z_PROBE_PIN
+   probe_retract();
+#endif //Z_PROBE_PIN
 }
 
 static void do_blocking_move_to(float x, float y, float z) {
@@ -994,16 +1105,26 @@ static void engage_z_probe() {
     }
     #else // Deploy the Z probe by touching the belt, no servo needed.
     feedrate = homing_feedrate[X_AXIS];
+    
+    #ifdef Z_PROBE_PIN
+      destination[X_AXIS] = 0;
+      destination[Y_AXIS] = 0;
+      destination[Z_AXIS] = 30;
+      prepare_move_raw();
+      st_synchronize();
+    #else
+ 
     destination[X_AXIS] = 35;
     destination[Y_AXIS] = 72;
     destination[Z_AXIS] = 100;
     prepare_move_raw();
-
+    
     feedrate = homing_feedrate[X_AXIS]/10;
     destination[X_AXIS] = 0;
     prepare_move_raw();
     st_synchronize();
-    #endif //SERVO_ENDSTOPS
+    #endif //Z_PROBE_PIN
+  #endif //SERVO_ENDSTOPS
 }
 
 static void retract_z_probe() {
@@ -1024,16 +1145,23 @@ static void retract_z_probe() {
     destination[Z_AXIS] = current_position[Z_AXIS] + 20;
     prepare_move_raw();
 
-    destination[X_AXIS] = -46;
-    destination[Y_AXIS] = 59;
-    destination[Z_AXIS] = 28;
-    prepare_move_raw();
+    #ifdef Z_PROBE_PIN
+      destination[X_AXIS] = 0;
+      destination[Y_AXIS] = 0;
+      destination[Z_AXIS] = 30;
+      prepare_move_raw();
+      st_synchronize();
+    #else
+      destination[X_AXIS] = -46;
+      destination[Y_AXIS] = 59;
+      destination[Z_AXIS] = 28;
+      prepare_move_raw();
 
     // TODO: Move the nozzle down until the Z probe switch is activated.
     //enable_endstops(true);
     //destination[Z_AXIS] = current_position[Z_AXIS] - 30;
     //enable_endstops(false);
-
+    
     // Move the nozzle down further to push the probe into retracted position.
     feedrate = homing_feedrate[Z_AXIS]/10;
     destination[Z_AXIS] = current_position[Z_AXIS] - 20;
@@ -1042,8 +1170,10 @@ static void retract_z_probe() {
     feedrate = homing_feedrate[Z_AXIS];
     destination[Z_AXIS] = current_position[Z_AXIS] + 30;
     prepare_move_raw();
+    
     st_synchronize();
-    #endif //SERVO_ENDSTOPS
+    #endif //Z_PROBE_PIN
+  #endif //SERVO_ENDSTOPS
 }
 
 /// Probe bed height at position (x,y), returns the measured z value
@@ -1062,6 +1192,9 @@ static float probe_pt(float x, float y, float z_before) {
 #ifdef SERVO_ENDSTOPS
   retract_z_probe();
 #endif //SERVO_ENDSTOPS
+
+  //do_blocking_move_relative(0, 0, Z_RAISE_BETWEEN_PROBINGS);  // raise before moving to center
+  //do_blocking_move_to(0, 0, measured_z + Z_RAISE_BETWEEN_PROBINGS);  // return to center before moving to the next point
 
   SERIAL_PROTOCOLPGM(MSG_BED);
   SERIAL_PROTOCOLPGM(" x: ");
@@ -1308,7 +1441,8 @@ void process_commands()
 #endif //ENABLE_AUTO_BED_LEVELING
 
 #ifdef NONLINEAR_BED_LEVELING
-      reset_bed_level();
+      // ***commented-out the reset to preserve the bed_level data when homing.
+      // reset_bed_level();
 #endif //NONLINEAR_BED_LEVELING
 
       saved_feedrate = feedrate;
@@ -1518,7 +1652,14 @@ void process_commands()
 
 #ifdef ENABLE_AUTO_BED_LEVELING
     case 29: // G29 Detailed Z-Probe, probes the bed at 3 or more points.
-        {
+      //  G29 A   run auto bed mapping
+      //  G29 Z   set nozzle z offset to specified value
+      //  G29 R   adjust nozzle z offset, relative to current value
+      //  G29 T   tap touch probe
+      //  G29 P   print height map
+      if( code_seen('A')) {  // G29 A run auto bed mapping
+        if (probe_ready()) {
+          
             #if Z_MIN_PIN == -1
             #error "You must have a Z_MIN endstop in order to enable Auto Bed Leveling feature!!! Z_MIN_PIN must point to a valid hardware pin."
             #endif
@@ -1558,14 +1699,14 @@ void process_commands()
             double eqnAMatrix[ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS*3];
             // "B" vector of Z points
             double eqnBVector[ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS];
-
+          /*
             #ifdef NONLINEAR_BED_LEVELING
             float z_offset = Z_PROBE_OFFSET_FROM_EXTRUDER;
             if (code_seen(axis_codes[Z_AXIS])) {
               z_offset += code_value();
             }
             #endif //NONLINEAR_BED_LEVELING
-
+          */
             int probePointCounter = 0;
             for (int yCount=0; yCount < ACCURATE_BED_LEVELING_POINTS; yCount++)
             {
@@ -1587,8 +1728,9 @@ void process_commands()
 
                 #ifdef DELTA
                 // Avoid probing the corners (outside the round or hexagon print surface) on a delta printer.
-                float distance_from_center = sqrt(xProbe*xProbe + yProbe*yProbe);
-                if (distance_from_center > DELTA_PRINTABLE_RADIUS) continue;
+                float distance_from_center = sqrt(xProbe*xProbe + 
+                    yProbe*(yProbe-Y_PROBE_OFFSET_FROM_EXTRUDER)); // Y direction effected by probe offset 
+                if (distance_from_center > DELTA_PROBABLE_RADIUS) continue;
                 #endif //DELTA
 
                 float z_before = probePointCounter == 0 ? Z_RAISE_BEFORE_PROBING :
@@ -1596,7 +1738,7 @@ void process_commands()
                 float measured_z = probe_pt(xProbe, yProbe, z_before);
 
                 #ifdef NONLINEAR_BED_LEVELING
-                bed_level[xCount][yCount] = measured_z + z_offset;
+                bed_level[xCount][yCount] = measured_z + z_probe_offset[xCount][yCount];
                 #endif //NONLINEAR_BED_LEVELING
 
                 eqnBVector[probePointCounter] = measured_z;
@@ -1605,11 +1747,16 @@ void process_commands()
                 eqnAMatrix[probePointCounter + 1*ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS] = yProbe;
                 eqnAMatrix[probePointCounter + 2*ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS] = 1;
                 probePointCounter++;
+                
+                manage_heater();
+                manage_inactivity();
+                lcd_update();
               }
             }
             clean_up_after_endstop_move();
 
           #ifdef NONLINEAR_BED_LEVELING
+            print_bed_level();
             extrapolate_unprobed_bed_level();
             print_bed_level();
           #else
@@ -1623,14 +1770,12 @@ void process_commands()
             SERIAL_PROTOCOLPGM(" d: ");
             SERIAL_PROTOCOLLN(plane_equation_coefficients[2]);
 
-
             set_bed_level_equation_lsq(plane_equation_coefficients);
 
             free(plane_equation_coefficients);
           #endif //NONLINEAR_BED_LEVELING
 
 #else // ACCURATE_BED_LEVELING not defined
-
 
             // prob 1
             float z_at_xLeft_yBack = probe_pt(LEFT_PROBE_BED_POSITION, BACK_PROBE_BED_POSITION, Z_RAISE_BEFORE_PROBING);
@@ -1667,7 +1812,40 @@ void process_commands()
             plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
           #endif //NONLINEAR_BED_LEVELING
         }
-        break;
+      } 
+        
+      if( code_seen('Z') ) { // G29 Z initialize nozzle z offset to specified value. must rerun auto leveling
+       #ifdef NONLINEAR_BED_LEVELING
+         int half = (ACCURATE_BED_LEVELING_POINTS - 1) / 2;
+         float z_offset = code_value();
+         if (z_offset >= 0) z_offset = z_probe_offset[half][half];
+         init_z_probe_offset(z_offset);
+       #else
+         // ?
+       #endif
+      }
+      if( code_seen('R') ) { // G29 R adjust nozzle z offset, relative to current value
+        float dz = code_value();
+        #ifdef NONLINEAR_BED_LEVELING
+          adjust_z_probe_offset(dz);
+       #else
+         // ?
+       #endif
+        
+      }
+      if( code_seen('T') ) { // G29 T touch probe tap test
+         //SERIAL_PROTOCOLLN(probe_tap() ? "HIT" : "MISS");
+         probe_ready();
+      }
+    #ifdef NONLINEAR_BED_LEVELING
+      if( code_seen('P') ) { //  G29 P print the height map array
+        SERIAL_ECHOLN("");
+        print_bed_level();
+        print_z_probe_offset();
+        SERIAL_ECHOLN("");
+      } 
+    #endif NONLINEAR_BED_LEVELING
+    break;
 
     case 30: // G30 Single Z Probe
         {
@@ -3299,9 +3477,12 @@ void adjust_delta(float cartesian[3])
   float right = (1-ratio_y)*z3 + ratio_y*z4;
   float offset = (1-ratio_x)*left + ratio_x*right;
 
-  delta[X_AXIS] += offset;
-  delta[Y_AXIS] += offset;
-  delta[Z_AXIS] += offset;
+ // delta[X_AXIS] += offset;
+ // delta[Y_AXIS] += offset;
+ // delta[Z_AXIS] += offset;
+  delta[X_AXIS] = min(delta_max_count, delta[X_AXIS] + offset);
+  delta[Y_AXIS] = min(delta_max_count, delta[Y_AXIS] + offset);
+  delta[Z_AXIS] = min(delta_max_count, delta[Z_AXIS] + offset);
 
   /*
   SERIAL_ECHOPGM("grid_x="); SERIAL_ECHO(grid_x);

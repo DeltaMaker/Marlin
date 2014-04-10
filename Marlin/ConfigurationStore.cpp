@@ -26,8 +26,32 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 #define EEPROM_READ_VAR(pos, value) _EEPROM_readData(pos, (uint8_t*)&value, sizeof(value))
 //======================================================================================
 
-
-
+#ifdef NONLINEAR_BED_LEVELING
+  short bed_level_packed[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+  short z_probe_offset_packed[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+  
+  void init_bed_level() {
+    for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
+      for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+        bed_level[x][y] = Z_PROBE_OFFSET_FROM_EXTRUDER;
+        z_probe_offset[x][y] = Z_PROBE_OFFSET_FROM_EXTRUDER;
+      }
+  }
+  void pack_bed_level() {
+    for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++)
+      for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+        bed_level_packed[x][y] = round(bed_level[x][y] * 100);
+        z_probe_offset_packed[x][y] = round(z_probe_offset[x][y] * 100);
+      }
+  }
+  void unpack_bed_level() {
+    for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++)
+      for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+        bed_level[x][y] = ((float) bed_level_packed[x][y]) / 100;
+        z_probe_offset[x][y] = ((float) z_probe_offset_packed[x][y]) / 100;
+      }
+  }
+#endif // NONLINEAR_BED_LEVELING
 
 #define EEPROM_OFFSET 100
 
@@ -37,7 +61,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 // the default values are used whenever there is a change to the data, to prevent
 // wrong data being written to the variables.
 // ALSO:  always make sure the variables in the Store and retrieve sections are in the same order.
-#define EEPROM_VERSION "V10"
+#define EEPROM_VERSION "V11"
 
 #ifdef EEPROM_SETTINGS
 void Config_StoreSettings() 
@@ -86,6 +110,11 @@ void Config_StoreSettings()
     int lcd_contrast = 32;
   #endif
   EEPROM_WRITE_VAR(i,lcd_contrast);
+  #ifdef NONLINEAR_BED_LEVELING
+    pack_bed_level();
+    EEPROM_WRITE_VAR(i,bed_level_packed);
+    EEPROM_WRITE_VAR(i,z_probe_offset_packed);
+  #endif
   char ver2[4]=EEPROM_VERSION;
   i=EEPROM_OFFSET;
   EEPROM_WRITE_VAR(i,ver2); // validate data
@@ -223,6 +252,13 @@ void Config_RetrieveSettings()
         int lcd_contrast;
         #endif
         EEPROM_READ_VAR(i,lcd_contrast);
+        
+   #ifdef NONLINEAR_BED_LEVELING
+     EEPROM_READ_VAR(i,bed_level_packed);
+     EEPROM_READ_VAR(i,z_probe_offset_packed);
+     unpack_bed_level();
+   #endif
+       
 
 		// Call updatePID (similar to when we have processed M301)
 		updatePID();
@@ -292,6 +328,10 @@ void Config_ResetDefault()
     Kc = DEFAULT_Kc;
 #endif//PID_ADD_EXTRUSION_RATE
 #endif//PIDTEMP
+
+#ifdef NONLINEAR_BED_LEVELING
+  init_bed_level();
+#endif
 
 SERIAL_ECHO_START;
 SERIAL_ECHOLNPGM("Hardcoded Default Settings Loaded");

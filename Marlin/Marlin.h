@@ -212,6 +212,10 @@ extern float add_homeing[3];
 #ifdef DELTA
 extern float endstop_adj[3];
 #endif
+#ifdef NONLINEAR_BED_LEVELING
+extern float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+extern float z_probe_offset[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+#endif
 extern float min_pos[3];
 extern float max_pos[3];
 extern bool axis_known_position[3];

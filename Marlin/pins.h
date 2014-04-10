@@ -442,19 +442,19 @@
     #define X_DIR_PIN          55
     #define X_ENABLE_PIN       38
     #define X_MIN_PIN          -1 // unused for deltabot, was 3
-    #define X_MAX_PIN           2
+    #define X_MAX_PIN           3 // 2
 
     #define Y_STEP_PIN         60
     #define Y_DIR_PIN          61
     #define Y_ENABLE_PIN       56
     #define Y_MIN_PIN          -1 // unused for deltabot, was 14
-    #define Y_MAX_PIN          15
+    #define Y_MAX_PIN          14 // 15
 
     #define Z_STEP_PIN         46
     #define Z_DIR_PIN          48
     #define Z_ENABLE_PIN       62
-    #define Z_MIN_PIN          18 // autolevel for deltabot
-    #define Z_MAX_PIN          19
+    #define Z_MIN_PIN          19 // 18 // autolevel for deltabot
+    #define Z_MAX_PIN          18 // 19 
 
     #define Y2_STEP_PIN        36
     #define Y2_DIR_PIN         34
@@ -489,12 +489,14 @@
     #define SDPOWER            -1
     #define SDSS               53
     #define LED_PIN            13
-  #endif
+    #define Z_PROBE_PIN        4   //  IO pin, 5v, extend and retract touch probe 
+ #endif
 
   #if MOTHERBOARD == 33 || MOTHERBOARD == 35 || MOTHERBOARD == 67 || MOTHERBOARD == 68
     #define FAN_PIN            9 // (Sprinter config)
+    #define EXTRUDER_FAN_PIN   16 // Azteeg X3  HotEnd/Fan
   #else
-    #define FAN_PIN            4 // IO pin. Buffer needed
+    #define FAN_PIN            -1 // Azteeg X3  HotEnd/Fan
   #endif
 
   #if MOTHERBOARD == 77
