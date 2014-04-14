@@ -254,6 +254,7 @@ const float delta_max_count = sqrt( sq(DELTA_DIAGONAL_ROD) - sq(DELTA_RADIUS) ) 
 #ifdef NONLINEAR_BED_LEVELING
 float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 float z_probe_offset[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+int gridPointCounter = 0;  // incremented during manual calibration
 #endif
 
 //===========================================================================
@@ -887,10 +888,7 @@ static void set_bed_level_equation(float z_at_xLeft_yFront, float z_at_xRight_yF
 #endif // ACCURATE_BED_LEVELING
 
 
-// *
-// * Support solenoid-based touch probe that require engaging and retracting for each probed point.
-// *
-#ifdef Z_PROBE_PIN
+#ifdef Z_PROBE_PIN  // Solenoid-based touch probe -- requires engaging and retracting for each probed point.
 void probe_engage(int d = 75) {  //lower z probe
   digitalWrite(Z_PROBE_PIN, HIGH);
   delay(d);
@@ -901,13 +899,6 @@ void probe_retract(int d = 150) {  // raise z probe
 }
 bool probe_in_contact() { // the touch probe switch is wired to the Z_MIN_PIN
   return (READ(Z_MIN_PIN) != Z_MIN_ENDSTOP_INVERTING);
-}
-bool probe_tap() {  // tap the probe by quickly lowering and raising it.
-    // return true if the probe strikes the bed, false if not.
-    probe_engage();
-    bool touch = probe_in_contact();
-    probe_retract();
-    return touch;
 }
 bool probe_engage_above_bed() {  // engage the probe, expecting it to miss the bed.
   // retry engage/retract in attempt to detect non-contact
@@ -927,64 +918,6 @@ bool probe_ready() { // return true if the touch probe properly detects non-cont
 }
 #endif //Z_PROBE_PIN
 
-
-#ifdef NONLINEAR_BED_LEVELING
-
-void init_z_probe_offset(float z_offset) {
-  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
-    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++)
-      z_probe_offset[x][y] = z_offset;
-}
-// print the manually set z_probe_offset correction
-static void print_z_probe_offset() {
-  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) {
-    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
-      SERIAL_PROTOCOL_F(z_probe_offset[x][y], 2);
-      if (x + 1 < ACCURATE_BED_LEVELING_POINTS) SERIAL_PROTOCOLPGM(",");
-      SERIAL_PROTOCOLPGM(" ");
-    }
-    SERIAL_ECHOLN("");
-  }
-}
-void adjust_heightmap(int x, int y, float dz) {
-  int half = (ACCURATE_BED_LEVELING_POINTS - 1) / 2;
-  if ((x != half) || (y != half)) {  //do not adjust at bed center
-    bed_level[x][y] += dz;
-    z_probe_offset[x][y] += dz;
-    SERIAL_ECHOPGM("["); SERIAL_ECHO(x); SERIAL_ECHOPGM("]["); SERIAL_ECHO(y); 
-    SERIAL_ECHOPGM("] + "); SERIAL_ECHO(dz);
-    SERIAL_ECHOPGM(" = ");
-    SERIAL_ECHOLN(z_probe_offset[x][y]);
-  }
-}
-
-void adjust_z_probe_offset(float dz) {
-  if (abs(current_position[X_AXIS]) + abs(current_position[Y_AXIS]) < 1.0) {  // near bed center
-    SERIAL_PROTOCOLLN("setting nozzle height");  // uniform adjustment
-     for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
-      for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
-        bed_level[x][y] += dz;
-        z_probe_offset[x][y] += dz;
-      }
-  }
-  else {
-    SERIAL_PROTOCOLLN("setting z_probe_offset");  // localized adjustment
-    float x = (current_position[X_AXIS] - LEFT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_X;
-    float y = (current_position[Y_AXIS] - FRONT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_Y;
-    float fract_x = x - (int) x;
-    float fract_y = y - (int) y;
-    //SERIAL_ECHOPGM("x = "); SERIAL_ECHO(x);
-    //SERIAL_ECHOPGM(", y = "); SERIAL_ECHOLN(y);
-    //SERIAL_ECHOPGM("fract_x = "); SERIAL_ECHO(fract_x);
-    //SERIAL_ECHOPGM(", fract_x = "); SERIAL_ECHOLN(fract_x);
-    //SERIAL_ECHOPGM("dz = "); SERIAL_ECHOLN(dz);
-    adjust_heightmap ((int) x, (int) y, (1.0 - fract_x) * (1.0 - fract_y) * dz);
-    adjust_heightmap ((int) x, (int) y + 1, fract_x * (1.0 - fract_y) * dz);
-    adjust_heightmap ((int) x + 1, (int) y, (1.0 - fract_x) * fract_y * dz);
-    adjust_heightmap ((int) x + 1, (int) y + 1, fract_x * fract_y * dz);
-  }
-}
-#endif
 
 static void run_z_probe() {
     plan_bed_level_matrix.set_to_identity();
@@ -1175,6 +1108,92 @@ static void retract_z_probe() {
     #endif //Z_PROBE_PIN
   #endif //SERVO_ENDSTOPS
 }
+
+
+#ifdef NONLINEAR_BED_LEVELING
+
+static void init_z_probe_offset(float z_offset) {
+  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
+    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++)
+      z_probe_offset[x][y] = z_offset;
+}
+static void adjust_nozzle_height(float dz) { // uniform adjustment over entire bed
+  SERIAL_PROTOCOLLN("setting nozzle height");  
+  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
+    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+      bed_level[x][y] += dz;
+      z_probe_offset[x][y] += dz;
+    }
+}
+
+static void adjust_heightmap(int x, int y, float dz) {
+  int half = (ACCURATE_BED_LEVELING_POINTS - 1) / 2;
+  if ((x != half) || (y != half)) {  //do not adjust at bed center
+    bed_level[x][y] += dz;
+    z_probe_offset[x][y] += dz;
+    SERIAL_ECHOPGM("["); SERIAL_ECHO(x); SERIAL_ECHOPGM("]["); SERIAL_ECHO(y); 
+    SERIAL_ECHOPGM("] + "); SERIAL_ECHO(dz);
+    SERIAL_ECHOPGM(" = ");
+    SERIAL_ECHOLN(z_probe_offset[x][y]);
+  }
+}
+
+static void adjust_z_probe_offset(float dz) { // localized adjustment at the current_position 
+  float x = (current_position[X_AXIS] - LEFT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_X;
+  float y = (current_position[Y_AXIS] - FRONT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_Y;
+  float fract_x = x - (int) x;
+  float fract_y = y - (int) y;
+  adjust_heightmap ((int) x, (int) y, (1.0 - fract_x) * (1.0 - fract_y) * dz);
+  adjust_heightmap ((int) x, (int) y + 1, fract_x * (1.0 - fract_y) * dz);
+  adjust_heightmap ((int) x + 1, (int) y, (1.0 - fract_x) * fract_y * dz);
+  adjust_heightmap ((int) x + 1, (int) y + 1, fract_x * fract_y * dz);
+}
+
+static void move_nozzle_to_next_probed_point(float z) {
+  float x,y, distance_from_center;
+  do {
+    gridPointCounter = ++gridPointCounter % (ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS);
+    SERIAL_ECHO("gridPointCounter = ");
+    SERIAL_ECHOLN(gridPointCounter);
+    int yCount = gridPointCounter / ACCURATE_BED_LEVELING_POINTS;
+    int xCount = gridPointCounter % ACCURATE_BED_LEVELING_POINTS;
+    if (yCount % 2) xCount = ACCURATE_BED_LEVELING_POINTS - xCount - 1;
+    y = FRONT_PROBE_BED_POSITION + ACCURATE_BED_LEVELING_GRID_Y * yCount;
+    x = LEFT_PROBE_BED_POSITION + ACCURATE_BED_LEVELING_GRID_X * xCount;
+    distance_from_center = sqrt(x*x + y*y);  
+  } while (distance_from_center > DELTA_PROBABLE_RADIUS);
+  
+  float oldFeedRate = feedrate;
+  feedrate = XY_TRAVEL_SPEED;
+  destination[X_AXIS] = x;
+  destination[Y_AXIS] = y;
+  destination[Z_AXIS] = z;
+  prepare_move();
+  st_synchronize();
+  feedrate = oldFeedRate;
+  
+  SERIAL_PROTOCOLPGM(" x: ");
+  SERIAL_PROTOCOL(x);
+  SERIAL_PROTOCOLPGM(" y: ");
+  SERIAL_PROTOCOL(y);
+  SERIAL_PROTOCOLPGM(" z: ");
+  SERIAL_PROTOCOL(z);
+  SERIAL_PROTOCOLPGM("\n");
+  
+}
+
+static void print_z_probe_offset() { // print the manually adjustable z_probe_offset correction
+  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) {
+    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+      SERIAL_PROTOCOL_F(z_probe_offset[x][y], 2);
+      if (x + 1 < ACCURATE_BED_LEVELING_POINTS) SERIAL_PROTOCOLPGM(",");
+      SERIAL_PROTOCOLPGM(" ");
+    }
+    SERIAL_ECHOLN("");
+  }
+}
+#endif //NONLINEAR_BED_LEVELING
+
 
 /// Probe bed height at position (x,y), returns the measured z value
 static float probe_pt(float x, float y, float z_before) {
@@ -1657,6 +1676,8 @@ void process_commands()
       //  G29 R   adjust nozzle z offset, relative to current value
       //  G29 T   tap touch probe
       //  G29 P   print height map
+      //  G29 L   manual calibration -- localized z offset adjustment
+      //  G29 M   manual calibration -- move nozzle to next probed point
       if( code_seen('A')) {  // G29 A run auto bed mapping
         if (probe_ready()) {
           
@@ -1813,31 +1834,26 @@ void process_commands()
           #endif //NONLINEAR_BED_LEVELING
         }
       } 
-        
-      if( code_seen('Z') ) { // G29 Z initialize nozzle z offset to specified value. must rerun auto leveling
-       #ifdef NONLINEAR_BED_LEVELING
+    #ifdef NONLINEAR_BED_LEVELING
+      if( code_seen('Z') ) { // G29 Z initialize nozzle z offset to specified value. Must rerun auto leveling
          int half = (ACCURATE_BED_LEVELING_POINTS - 1) / 2;
          float z_offset = code_value();
-         if (z_offset >= 0) z_offset = z_probe_offset[half][half];
+         // if a value is not specified, use the current value at the center of the bed
+         if (z_offset <= 0) z_offset = z_probe_offset[half][half];
          init_z_probe_offset(z_offset);
-       #else
-         // ?
-       #endif
       }
-      if( code_seen('R') ) { // G29 R adjust nozzle z offset, relative to current value
-        float dz = code_value();
-        #ifdef NONLINEAR_BED_LEVELING
-          adjust_z_probe_offset(dz);
-       #else
-         // ?
-       #endif
-        
+      if( code_seen('R') ) { // G29 R adjust nozzle/probe offset, relative to current value
+         adjust_nozzle_height(code_value());
+      }
+      if( code_seen('L') ) { // G29 R adjust local z_probe_offset, relative to current value
+         adjust_z_probe_offset(code_value());     
       }
       if( code_seen('T') ) { // G29 T touch probe tap test
-         //SERIAL_PROTOCOLLN(probe_tap() ? "HIT" : "MISS");
-         probe_ready();
+          probe_ready();
       }
-    #ifdef NONLINEAR_BED_LEVELING
+      if( code_seen('M') ) { // G29 M  move nozzle to next probe point, at specified z
+         move_nozzle_to_next_probed_point(code_value());
+      }
       if( code_seen('P') ) { //  G29 P print the height map array
         SERIAL_ECHOLN("");
         print_bed_level();
@@ -3477,9 +3493,7 @@ void adjust_delta(float cartesian[3])
   float right = (1-ratio_y)*z3 + ratio_y*z4;
   float offset = (1-ratio_x)*left + ratio_x*right;
 
- // delta[X_AXIS] += offset;
- // delta[Y_AXIS] += offset;
- // delta[Z_AXIS] += offset;
+  // clamp motion at top each tower
   delta[X_AXIS] = min(delta_max_count, delta[X_AXIS] + offset);
   delta[Y_AXIS] = min(delta_max_count, delta[Y_AXIS] + offset);
   delta[Z_AXIS] = min(delta_max_count, delta[Z_AXIS] + offset);
