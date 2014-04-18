@@ -1127,15 +1127,12 @@ static void adjust_nozzle_height(float dz) { // uniform adjustment over entire b
 }
 
 static void adjust_heightmap(int x, int y, float dz) {
-  int half = (ACCURATE_BED_LEVELING_POINTS - 1) / 2;
-  if ((x != half) || (y != half)) {  //do not adjust at bed center
     bed_level[x][y] += dz;
     z_probe_offset[x][y] += dz;
     SERIAL_ECHOPGM("["); SERIAL_ECHO(x); SERIAL_ECHOPGM("]["); SERIAL_ECHO(y); 
     SERIAL_ECHOPGM("] + "); SERIAL_ECHO(dz);
     SERIAL_ECHOPGM(" = ");
     SERIAL_ECHOLN(z_probe_offset[x][y]);
-  }
 }
 
 static void adjust_z_probe_offset(float dz) { // localized adjustment at the current_position 

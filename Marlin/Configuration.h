@@ -121,7 +121,7 @@
 #define DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
 
 // Print surface diameter/2 minus unreachable space (avoid collisions with vertical towers).
-#define DELTA_PRINTABLE_RADIUS 128.0
+#define DELTA_PRINTABLE_RADIUS 136.0
 
 // Effective X/Y positions of the three vertical towers.
 #define SIN_60 0.8660254037844386
@@ -370,12 +370,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #define X_MIN_POS -DELTA_PRINTABLE_RADIUS
 #define Y_MAX_POS DELTA_PRINTABLE_RADIUS
 #define Y_MIN_POS -DELTA_PRINTABLE_RADIUS
-/*
-#define X_MAX_POS 130 // 125
-#define X_MIN_POS -130  // -125 
-#define Y_MAX_POS 130   // 115 is maximum Y with AUTOLEVEL_GRID = 32
-#define Y_MIN_POS -130  // -135 needed to reach the front of bed
-*/
 #define Z_MAX_POS MANUAL_Z_HOME_POS
 #define Z_MIN_POS 0
 
@@ -391,18 +385,13 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #ifdef ENABLE_AUTO_BED_LEVELING
 
   // these are the positions on the bed to do the probing
-  #define DELTA_PROBABLE_RADIUS (DELTA_PRINTABLE_RADIUS-8)
+  #define DELTA_PROBABLE_RADIUS (DELTA_PRINTABLE_RADIUS-16)
 
   #define LEFT_PROBE_BED_POSITION -DELTA_PROBABLE_RADIUS
   #define RIGHT_PROBE_BED_POSITION DELTA_PROBABLE_RADIUS
   #define BACK_PROBE_BED_POSITION DELTA_PROBABLE_RADIUS
   #define FRONT_PROBE_BED_POSITION -DELTA_PROBABLE_RADIUS
-/*
-  #define LEFT_PROBE_BED_POSITION X_MIN_POS
-  #define RIGHT_PROBE_BED_POSITION X_MAX_POS
-  #define BACK_PROBE_BED_POSITION Y_MAX_POS
-  #define FRONT_PROBE_BED_POSITION Y_MIN_POS
-*/
+
   // these are the offsets to the probe relative to the extruder tip (Hotend - Probe)
   #define X_PROBE_OFFSET_FROM_EXTRUDER -16.0
   #define Y_PROBE_OFFSET_FROM_EXTRUDER -22.0 
