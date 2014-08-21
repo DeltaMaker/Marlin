@@ -25,6 +25,7 @@ static void i2c_send(byte addr, byte a, byte b)
 void digipot_i2c_set_current( int channel, float current )
 {
     current = min( (float) max( current, 0.0f ), DIGIPOT_I2C_MAX_CURRENT);
+    digipot_motor_current[channel] = current;  // for ConfigurationStore 
     // these addresses are specific to Azteeg X3 Pro, can be set to others,
     // In this case first digipot is at address A0=0, A1= 0, second one is at A0=0, A1= 1
     byte addr= 0x2C; // channel 0-3
@@ -44,7 +45,7 @@ void digipot_i2c_set_current( int channel, float current )
 
 void digipot_i2c_init()
 {
-    const float digipot_motor_current[] = DIGIPOT_I2C_MOTOR_CURRENTS;
+    // const float digipot_motor_current[] = DIGIPOT_I2C_MOTOR_CURRENTS;
     Wire.begin();
     // setup initial currents as defined in Configuration_adv.h
     for(int i=0;i<=sizeof(digipot_motor_current)/sizeof(float);i++) {

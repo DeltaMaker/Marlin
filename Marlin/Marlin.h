@@ -246,6 +246,7 @@ extern uint8_t active_extruder;
 #ifdef DIGIPOT_I2C
 extern void digipot_i2c_set_current( int channel, float current );
 extern void digipot_i2c_init();
+extern float digipot_motor_current[DIGIPOT_I2C_NUM_CHANNELS];
 #endif
 
 #endif

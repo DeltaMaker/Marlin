@@ -257,6 +257,10 @@ float z_probe_offset[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS]
 int gridPointCounter = 0;  // incremented during manual calibration
 #endif
 
+#ifdef DIGIPOT_I2C
+  float digipot_motor_current[DIGIPOT_I2C_NUM_CHANNELS] = DIGIPOT_I2C_MOTOR_CURRENTS;
+#endif
+
 //===========================================================================
 //=============================private variables=============================
 //===========================================================================

@@ -115,6 +115,10 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i,bed_level_packed);
     EEPROM_WRITE_VAR(i,z_probe_offset_packed);
   #endif
+  #ifdef DIGIPOT_I2C
+    EEPROM_WRITE_VAR(i,digipot_motor_current);
+  #endif   
+
   char ver2[4]=EEPROM_VERSION;
   i=EEPROM_OFFSET;
   EEPROM_WRITE_VAR(i,ver2); // validate data
@@ -191,11 +195,23 @@ void Config_PrintSettings()
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM("PID settings:");
     SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("   M301 P",Kp); 
+    SERIAL_ECHOPAIR("  M301 P",Kp); 
     SERIAL_ECHOPAIR(" I" ,unscalePID_i(Ki)); 
     SERIAL_ECHOPAIR(" D" ,unscalePID_d(Kd));
     SERIAL_ECHOLN(""); 
 #endif
+#ifdef DIGIPOT_I2C
+    SERIAL_ECHO_START;
+    SERIAL_ECHOLNPGM("I2C digipot settings:");
+    SERIAL_ECHO_START;
+    SERIAL_ECHOPAIR("  M907 X", digipot_motor_current[0]); 
+    SERIAL_ECHOPAIR(" Y" ,digipot_motor_current[1] );
+    SERIAL_ECHOPAIR(" Z" ,digipot_motor_current[2] );
+    SERIAL_ECHOPAIR(" E" ,digipot_motor_current[3] );
+    SERIAL_ECHOPAIR(" B" ,digipot_motor_current[4] );
+    SERIAL_ECHOLN("");
+#endif
+
 } 
 #endif
 
@@ -253,12 +269,14 @@ void Config_RetrieveSettings()
         #endif
         EEPROM_READ_VAR(i,lcd_contrast);
         
-   #ifdef NONLINEAR_BED_LEVELING
-     EEPROM_READ_VAR(i,bed_level_packed);
-     EEPROM_READ_VAR(i,z_probe_offset_packed);
-     unpack_bed_level();
-   #endif
-       
+        #ifdef NONLINEAR_BED_LEVELING
+          EEPROM_READ_VAR(i,bed_level_packed);
+          EEPROM_READ_VAR(i,z_probe_offset_packed);
+          unpack_bed_level();
+        #endif
+        #ifdef DIGIPOT_I2C
+          EEPROM_READ_VAR(i,digipot_motor_current);
+        #endif   
 
 		// Call updatePID (similar to when we have processed M301)
 		updatePID();
@@ -332,6 +350,10 @@ void Config_ResetDefault()
 #ifdef NONLINEAR_BED_LEVELING
   init_bed_level();
 #endif
+#ifdef DIGIPOT_I2C
+  const float default_current[] = DIGIPOT_I2C_MOTOR_CURRENTS;
+  for (int i=0; i<=sizeof(default_current)/sizeof(float); i++) digipot_motor_current[i] = default_current[i];
+#endif   
 
 SERIAL_ECHO_START;
 SERIAL_ECHOLNPGM("Hardcoded Default Settings Loaded");
