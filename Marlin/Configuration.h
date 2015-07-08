@@ -16,7 +16,7 @@
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
 #define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2 Dev)" // Who made the changes.
+#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2-alpha1)" // Who made the changes.
 
 // SERIAL_PORT selects which serial port should be used for communication with the host.
 // This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -83,7 +83,7 @@
 // #define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
 
 // This defines the number of extruders
-#define EXTRUDERS 1  // 2
+#define EXTRUDERS 2
 
 //// The following define selects which power supply you have. Please choose the one that matches your setup
 // 1 = ATX
@@ -109,7 +109,7 @@
 #define DELTA_DIAGONAL_ROD 265.0 // mm
 
 // Horizontal offset from middle of printer to smooth rod center.
-#define DELTA_SMOOTH_ROD_OFFSET 178.06 * 1.25 // mm
+#define DELTA_SMOOTH_ROD_OFFSET 178.06 // mm
 
 // Horizontal offset of the universal joints on the end effector.
 #define DELTA_EFFECTOR_OFFSET 39.37 // mm
@@ -121,7 +121,7 @@
 #define DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
 
 // Print surface diameter/2 minus unreachable space (avoid collisions with vertical towers).
-#define DELTA_PRINTABLE_RADIUS 110.0
+#define DELTA_PRINTABLE_RADIUS 136.0
 
 // Effective X/Y positions of the three vertical towers.
 #define SIN_60 0.8660254037844386
@@ -214,11 +214,11 @@
 // Comment the following line to disable PID and enable bang-bang.
 #define PIDTEMP
 #define BANG_MAX 255 // limits current to nozzle while in bang-bang mode; 255=full current
-#define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
+#define PID_MAX 200  // was 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
 #ifdef PIDTEMP
   //#define PID_DEBUG // Sends debug data to the serial port.
   //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
-  #define PID_FUNCTIONAL_RANGE 10 // If the temperature difference between the target temperature and the actual temperature
+  #define PID_FUNCTIONAL_RANGE 30 // If the temperature difference between the target temperature and the actual temperature
                                   // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
   #define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
   #define K1 0.95 //smoothing factor within the PID
@@ -395,7 +395,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
   // these are the offsets to the probe relative to the extruder tip (Hotend - Probe)
   #define X_PROBE_OFFSET_FROM_EXTRUDER -16.0
   #define Y_PROBE_OFFSET_FROM_EXTRUDER -22.0 
-  #define Z_PROBE_OFFSET_FROM_EXTRUDER -0.5
+  #define Z_PROBE_OFFSET_FROM_EXTRUDER 0.0  // must be zero
 
   #define Z_RAISE_BEFORE_HOMING 4       // (in mm) Raise Z before homing (G28) for Probe Clearance.
                                         // Be sure you have this distance over your Z_MAX_POS in case
@@ -457,7 +457,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 // For deltabots this means top and center of the Cartesian print volume.
 #define MANUAL_X_HOME_POS 0
 #define MANUAL_Y_HOME_POS 0
-#define MANUAL_Z_HOME_POS 500 // 300 // was 285  // For delta: Distance between nozzle and print surface after homing.
+#define MANUAL_Z_HOME_POS 300 // 300 or 495  // For delta: Distance between nozzle and print surface after homing.
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E

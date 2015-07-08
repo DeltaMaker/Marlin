@@ -926,10 +926,6 @@ bool probe_ready() { // return true if the touch probe properly detects non-cont
 static void run_z_probe() {
     plan_bed_level_matrix.set_to_identity();
 
-#ifdef Z_PROBE_PIN
-   probe_engage_above_bed();  // lower touch probe (be sure to retract it within 10 seconds)
-#endif //Z_PROBE_PIN
-
 #ifdef DELTA
     enable_endstops(true);
     float start_z = current_position[Z_AXIS];
@@ -975,10 +971,6 @@ static void run_z_probe() {
     // make sure the planner knows where we are as it may be a bit different than we last said to move to
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 #endif
-
-#ifdef Z_PROBE_PIN
-   probe_retract();
-#endif //Z_PROBE_PIN
 }
 
 static void do_blocking_move_to(float x, float y, float z) {
@@ -1180,7 +1172,16 @@ static void move_nozzle_to_next_probed_point(float z) {
   SERIAL_PROTOCOLPGM(" z: ");
   SERIAL_PROTOCOL(z);
   SERIAL_PROTOCOLPGM("\n");
-  
+}
+
+
+static void set_z_probe_offset(float z) { // set the z offset for the current_position 
+  int x = (current_position[X_AXIS] - LEFT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_X;
+  int y = (current_position[Y_AXIS] - FRONT_PROBE_BED_POSITION) / ACCURATE_BED_LEVELING_GRID_Y;
+  z_probe_offset[x][y] = z;
+    SERIAL_ECHO( bed_level[x][y]); SERIAL_ECHOPGM(" ["); SERIAL_ECHO(x); SERIAL_ECHOPGM("]["); SERIAL_ECHO(y); 
+    SERIAL_ECHOPGM("] = "); 
+    SERIAL_ECHOLN(z_probe_offset[x][y]);
 }
 
 static void print_z_probe_offset() { // print the manually adjustable z_probe_offset correction
@@ -1206,8 +1207,16 @@ static float probe_pt(float x, float y, float z_before) {
   engage_z_probe();   // Engage Z Servo endstop if available
 #endif //SERVO_ENDSTOPS
 
+#ifdef Z_PROBE_PIN
+   probe_engage_above_bed();  // lower touch probe (be sure to retract it within 10 seconds)
+#endif //Z_PROBE_PIN
+
   run_z_probe();
   float measured_z = current_position[Z_AXIS];
+
+#ifdef Z_PROBE_PIN
+   probe_retract();
+#endif //Z_PROBE_PIN
 
 #ifdef SERVO_ENDSTOPS
   retract_z_probe();
@@ -1230,6 +1239,24 @@ static float probe_pt(float x, float y, float z_before) {
 #endif // #ifdef ENABLE_AUTO_BED_LEVELING
 
 #ifdef NONLINEAR_BED_LEVELING
+static void extrapolate_z_probe_point(int x, int y, int xdir, int ydir) {
+  if (abs (z_probe_offset[x][y]) > 0.01) {
+    return;  // Don't overwrite good values.
+  }
+  float a = 2*z_probe_offset[x+xdir][y] - z_probe_offset[x+xdir*2][y];  // Left to right.
+  float b = 2*z_probe_offset[x][y+ydir] - z_probe_offset[x][y+ydir*2];  // Front to back.
+  float c = 2*z_probe_offset[x+xdir][y+ydir] - z_probe_offset[x+xdir*2][y+ydir*2];  // Diagonal.
+  float median = c;  // Median is robust (ignores outliers).
+  if (a < b) {
+    if (b < c) median = b;
+    if (c < a) median = a;
+  } else {  // b <= a
+    if (c < b) median = b;
+    if (a < c) median = a;
+  }
+  z_probe_offset[x][y] = median;
+}
+
 static void extrapolate_one_point(int x, int y, int xdir, int ydir) {
   if (bed_level[x][y] != 0.0) {
     return;  // Don't overwrite good values.
@@ -1463,6 +1490,7 @@ void process_commands()
 #ifdef NONLINEAR_BED_LEVELING
       // ***commented-out the reset to preserve the bed_level data when homing.
       // reset_bed_level();
+      gridPointCounter = 0;  
 #endif //NONLINEAR_BED_LEVELING
 
       saved_feedrate = feedrate;
@@ -1846,7 +1874,7 @@ void process_commands()
       if( code_seen('R') ) { // G29 R adjust nozzle/probe offset, relative to current value
          adjust_nozzle_height(code_value());
       }
-      if( code_seen('L') ) { // G29 R adjust local z_probe_offset, relative to current value
+      if( code_seen('L') ) { // G29 L adjust local z_probe_offset, relative to current value
          adjust_z_probe_offset(code_value());     
       }
       if( code_seen('T') ) { // G29 T touch probe tap test
@@ -3314,10 +3342,11 @@ void process_commands()
         // Set the new active extruder and position
         active_extruder = tmp_extruder;
       #endif //else DUAL_X_CARRIAGE
-        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+        // this part doesn't work on a delta. current_position is in cartesian space, not delta
+        //plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
         // Move to the old position if 'F' was in the parameters
         if(make_move && Stopped == false) {
-           prepare_move();
+           //prepare_move();
         }
       }
       #endif

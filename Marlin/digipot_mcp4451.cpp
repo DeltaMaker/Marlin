@@ -15,7 +15,7 @@ static byte current_to_wiper( float current ){
 
 static void i2c_send(byte addr, byte a, byte b)
 {
-	Wire.beginTransmission(addr);
+    Wire.beginTransmission(addr);
     Wire.write(a);
     Wire.write(b);
     Wire.endTransmission();

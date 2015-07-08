@@ -52,6 +52,22 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
       }
   }
 #endif // NONLINEAR_BED_LEVELING
+#ifdef DIGIPOT_I2C
+  short digipot_motor_current_packed[DIGIPOT_I2C_NUM_CHANNELS];
+  void init_digipot_motor_current() {
+    const float default_current[] = DIGIPOT_I2C_MOTOR_CURRENTS;
+    for (int i = 0; i < DIGIPOT_I2C_NUM_CHANNELS; i++) digipot_motor_current[i] = default_current[i];
+  }
+  void pack_digipot_motors_current() {
+    for (int i = 0; i < DIGIPOT_I2C_NUM_CHANNELS; i++)
+      digipot_motor_current_packed[i] = round(digipot_motor_current[i] * 100);
+  }
+   void unpack_digipot_motors_current() {
+    for (int i = 0; i < DIGIPOT_I2C_NUM_CHANNELS; i++)
+      digipot_motor_current[i] = ((float) digipot_motor_current_packed[i]) / 100;
+  }
+#endif   
+
 
 #define EEPROM_OFFSET 100
 
@@ -116,7 +132,8 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i,z_probe_offset_packed);
   #endif
   #ifdef DIGIPOT_I2C
-    EEPROM_WRITE_VAR(i,digipot_motor_current);
+    pack_digipot_motors_current();
+    EEPROM_WRITE_VAR(i,digipot_motor_current_packed);
   #endif   
 
   char ver2[4]=EEPROM_VERSION;
@@ -275,7 +292,8 @@ void Config_RetrieveSettings()
           unpack_bed_level();
         #endif
         #ifdef DIGIPOT_I2C
-          EEPROM_READ_VAR(i,digipot_motor_current);
+          EEPROM_READ_VAR(i,digipot_motor_current_packed);
+          unpack_digipot_motors_current();
         #endif   
 
 		// Call updatePID (similar to when we have processed M301)
@@ -351,8 +369,7 @@ void Config_ResetDefault()
   init_bed_level();
 #endif
 #ifdef DIGIPOT_I2C
-  const float default_current[] = DIGIPOT_I2C_MOTOR_CURRENTS;
-  for (int i=0; i<=sizeof(default_current)/sizeof(float); i++) digipot_motor_current[i] = default_current[i];
+  init_digipot_motor_current();
 #endif   
 
 SERIAL_ECHO_START;

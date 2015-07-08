@@ -21,7 +21,7 @@
 #ifdef PIDTEMP
   // this adds an experimental additional term to the heating power, proportional to the extrusion speed.
   // if Kc is chosen well, the additional required power due to increased melting should be compensated.
-  #define PID_ADD_EXTRUSION_RATE
+//  #define PID_ADD_EXTRUSION_RATE
   #ifdef PID_ADD_EXTRUSION_RATE
     #define  DEFAULT_Kc (1) //heating power=Kc*(e_speed)
   #endif
@@ -229,7 +229,7 @@
 #define INVERT_E_STEP_PIN false
 
 //default stepper release if idle
-#define DEFAULT_STEPPER_DEACTIVE_TIME 120
+#define DEFAULT_STEPPER_DEACTIVE_TIME 300 // was 120
 
 #define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
@@ -272,9 +272,9 @@
 // uncomment to enable an I2C based DIGIPOT like on the Azteeg X3 Pro
 #define DIGIPOT_I2C
 // Number of channels available for I2C digipot, For Azteeg X3 Pro we have 8, Azteeg X3 v2.0 has 5
-#define DIGIPOT_I2C_NUM_CHANNELS 5 
+#define DIGIPOT_I2C_NUM_CHANNELS 8 
 // actual motor currents in Amps, need as many here as DIGIPOT_I2C_NUM_CHANNELS
-#define DIGIPOT_I2C_MOTOR_CURRENTS {1.0, 1.0, 1.0, 1.0, 1.0}
+#define DIGIPOT_I2C_MOTOR_CURRENTS {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}
 
 //===========================================================================
 //=============================Additional Features===========================
