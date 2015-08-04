@@ -255,6 +255,7 @@ const float delta_max_count = sqrt( sq(DELTA_DIAGONAL_ROD) - sq(DELTA_RADIUS) ) 
 float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 float z_probe_offset[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 int gridPointCounter = 0;  // incremented during manual calibration
+int xIndex, yIndex;
 #endif
 
 #ifdef DIGIPOT_I2C
@@ -1194,6 +1195,15 @@ static void print_z_probe_offset() { // print the manually adjustable z_probe_of
     SERIAL_ECHOLN("");
   }
 }
+static void display_z_probe_offset() { // display the z_probe_offset array as gcodes
+  for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) {
+    for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
+      SERIAL_ECHOPGM("G29 X"); SERIAL_ECHO(x); SERIAL_ECHOPGM(" Y"); SERIAL_ECHO(y); 
+      SERIAL_ECHOPGM(" S"); SERIAL_PROTOCOL_F(z_probe_offset[x][y], 2);
+      SERIAL_ECHOLN("");
+    }
+  }
+}
 #endif //NONLINEAR_BED_LEVELING
 
 
@@ -1707,6 +1717,9 @@ void process_commands()
       //  G29 P   print height map
       //  G29 L   manual calibration -- localized z offset adjustment
       //  G29 M   manual calibration -- move nozzle to next probed point
+      //  G29 D   display (dump) z offset array as gcodes
+      //  G29 X Y S  set the z offset value at xIndex, yIndex
+      
       if( code_seen('A')) {  // G29 A run auto bed mapping
         if (probe_ready()) {
           
@@ -1889,6 +1902,21 @@ void process_commands()
         print_z_probe_offset();
         SERIAL_ECHOLN("");
       } 
+      if( code_seen('D') ) { //  G29 D display the height map array as gcodes
+        SERIAL_ECHOLN("");
+        display_z_probe_offset();
+        SERIAL_ECHOLN("");
+      } 
+      if( code_seen('X') ) { // G29 X set X index
+          xIndex=min( max (0, code_value()), ACCURATE_BED_LEVELING_POINTS-1);
+      }
+      if( code_seen('Y') ) { // G29 Y set Y index
+          yIndex=min( max (0, code_value()), ACCURATE_BED_LEVELING_POINTS-1);
+      }
+      if( code_seen('S') ) { // G29 S set z_probe_offset value
+          z_probe_offset[xIndex][yIndex]=code_value();
+      }
+
     #endif NONLINEAR_BED_LEVELING
     break;
 

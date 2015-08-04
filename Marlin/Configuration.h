@@ -16,7 +16,7 @@
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
 #define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2-alpha1)" // Who made the changes.
+#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2T-alpha1.1)" // Who made the changes.
 
 // SERIAL_PORT selects which serial port should be used for communication with the host.
 // This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -83,7 +83,7 @@
 // #define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
 
 // This defines the number of extruders
-#define EXTRUDERS 2
+#define EXTRUDERS 1 // 2
 
 //// The following define selects which power supply you have. Please choose the one that matches your setup
 // 1 = ATX
@@ -171,8 +171,8 @@
 // 147 is Pt100 with 4k7 pullup
 // 110 is Pt100 with 1k pullup (non standard)
 
-#define TEMP_SENSOR_0 1
-#define TEMP_SENSOR_1 1 // 0
+#define TEMP_SENSOR_0 1 // 5
+#define TEMP_SENSOR_1 0 // 5 // 0
 #define TEMP_SENSOR_2 0
 #define TEMP_SENSOR_BED 1
 
@@ -226,9 +226,9 @@
 
 // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
 // QU-BD Hot End with 40w heater
-    #define  DEFAULT_Kp 12.29 
-    #define  DEFAULT_Ki 0.83   
-    #define  DEFAULT_Kd 45.32
+    #define  DEFAULT_Kp 35.51 
+    #define  DEFAULT_Ki 5.83   
+    #define  DEFAULT_Kd 54.10
 // Ultimaker
 //    #define  DEFAULT_Kp 22.2
 //    #define  DEFAULT_Ki 1.08
@@ -457,7 +457,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 // For deltabots this means top and center of the Cartesian print volume.
 #define MANUAL_X_HOME_POS 0
 #define MANUAL_Y_HOME_POS 0
-#define MANUAL_Z_HOME_POS 300 // 300 or 495  // For delta: Distance between nozzle and print surface after homing.
+#define MANUAL_Z_HOME_POS 495 // 300 or 495  // For delta: Distance between nozzle and print surface after homing.
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
