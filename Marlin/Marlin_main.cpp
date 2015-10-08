@@ -933,7 +933,10 @@ static void run_z_probe() {
     long start_steps = st_get_position(Z_AXIS);
 
     feedrate = homing_feedrate[Z_AXIS]/4;
-    destination[Z_AXIS] = -10;
+    // move down until you find the bed
+    float zPosition = -500;  // -10;
+
+    destination[Z_AXIS] = zPosition;   
     prepare_move_raw();
     st_synchronize();
     endstops_hit_on_purpose();
@@ -1291,7 +1294,7 @@ static void extrapolate_unprobed_bed_level() {
   int half = (ACCURATE_BED_LEVELING_POINTS-1)/2;
   for (int y = 0; y <= half; y++) {
     for (int x = 0; x <= half; x++) {
-      if (x + y < 3) continue;
+      if (x + y < 2) continue;  // was 3
       extrapolate_one_point(half-x, half-y, x>1?+1:0, y>1?+1:0);
       extrapolate_one_point(half+x, half-y, x>1?-1:0, y>1?+1:0);
       extrapolate_one_point(half-x, half+y, x>1?+1:0, y>1?-1:0);

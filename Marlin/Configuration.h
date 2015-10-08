@@ -16,7 +16,7 @@
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
 #define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2T-alpha1.1)" // Who made the changes.
+#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2-inverted1.3)" // Who made the changes.
 
 // SERIAL_PORT selects which serial port should be used for communication with the host.
 // This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -121,7 +121,7 @@
 #define DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
 
 // Print surface diameter/2 minus unreachable space (avoid collisions with vertical towers).
-#define DELTA_PRINTABLE_RADIUS 136.0
+#define DELTA_PRINTABLE_RADIUS 60   // 136.0
 
 // Effective X/Y positions of the three vertical towers.
 #define SIN_60 0.8660254037844386
@@ -171,7 +171,7 @@
 // 147 is Pt100 with 4k7 pullup
 // 110 is Pt100 with 1k pullup (non standard)
 
-#define TEMP_SENSOR_0 1 // 5
+#define TEMP_SENSOR_0 5  // 1 // 5
 #define TEMP_SENSOR_1 0 // 5 // 0
 #define TEMP_SENSOR_2 0
 #define TEMP_SENSOR_BED 1
@@ -225,10 +225,11 @@
   #define PID_dT ((OVERSAMPLENR * 8.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
 
 // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
-// QU-BD Hot End with 40w heater
-    #define  DEFAULT_Kp 35.51 
-    #define  DEFAULT_Ki 5.83   
-    #define  DEFAULT_Kd 54.10
+// E3D Hot End with 40w heater
+//  M301 P22.45 I2.90 D43.41
+    #define  DEFAULT_Kp 22.45 
+    #define  DEFAULT_Ki 2.90   
+    #define  DEFAULT_Kd 43.41
 // Ultimaker
 //    #define  DEFAULT_Kp 22.2
 //    #define  DEFAULT_Ki 1.08
@@ -385,7 +386,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #ifdef ENABLE_AUTO_BED_LEVELING
 
   // these are the positions on the bed to do the probing
-  #define DELTA_PROBABLE_RADIUS (DELTA_PRINTABLE_RADIUS-16)
+  #define DELTA_PROBABLE_RADIUS DELTA_PRINTABLE_RADIUS-9  // (DELTA_PRINTABLE_RADIUS-16)
 
   #define LEFT_PROBE_BED_POSITION -DELTA_PROBABLE_RADIUS
   #define RIGHT_PROBE_BED_POSITION DELTA_PROBABLE_RADIUS
@@ -402,7 +403,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 
   #define XY_TRAVEL_SPEED 5000         // X and Y axis travel speed between probes, in mm/min
 
-  #define Z_RAISE_BEFORE_PROBING 40  //How much the extruder will be raised before traveling to the first probing point.
+  #define Z_RAISE_BEFORE_PROBING 200  // 40  //How much the extruder will be raised before traveling to the first probing point.
   #define Z_RAISE_BETWEEN_PROBINGS 5  //How much the extruder will be raised when traveling from between next probing points
 
 

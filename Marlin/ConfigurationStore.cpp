@@ -33,7 +33,7 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
   void init_bed_level() {
     for (int y = 0; y < ACCURATE_BED_LEVELING_POINTS; y++) 
       for (int x = 0; x < ACCURATE_BED_LEVELING_POINTS; x++) {
-        bed_level[x][y] = Z_RAISE_BEFORE_PROBING;
+        bed_level[x][y] = MANUAL_Z_HOME_POS - 200;  // Z_RAISE_BEFORE_PROBING;
         z_probe_offset[x][y] = Z_PROBE_OFFSET_FROM_EXTRUDER;
       }
   }
