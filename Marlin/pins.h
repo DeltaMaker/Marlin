@@ -566,6 +566,9 @@
   #endif
 
   #define TEMP_BED_PIN       14   // ANALOG NUMBERING
+  
+  #define TEMP_1_PIN         -1   // ANALOG NUMBERING  August 2018 Azteegs with faulty T1 input
+  #define TEMP_BED_PIN       -1   // ANALOG NUMBERING  August 2018 Azteegs with faulty Bed Temp input
 
   #ifdef NUM_SERVOS
     #define SERVO0_PIN         11

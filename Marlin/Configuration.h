@@ -16,7 +16,7 @@
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
 #define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2T-alpha1.1)" // Who made the changes.
+#define STRING_CONFIG_H_AUTHOR "(DeltaMaker, DM2T-beta2)" // Who made the changes.
 
 // SERIAL_PORT selects which serial port should be used for communication with the host.
 // This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -174,7 +174,7 @@
 #define TEMP_SENSOR_0 1 // 5
 #define TEMP_SENSOR_1 0 // 5 // 0
 #define TEMP_SENSOR_2 0
-#define TEMP_SENSOR_BED 1
+#define TEMP_SENSOR_BED 0 // 1
 
 // This makes temp sensor 1 a redundant sensor for sensor 0. If the temperatures difference between these sensors is to high the print will be aborted.
 //#define TEMP_SENSOR_1_AS_REDUNDANT
@@ -196,9 +196,9 @@
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
-#define HEATER_0_MAXTEMP 265
-#define HEATER_1_MAXTEMP 265
-#define HEATER_2_MAXTEMP 265
+#define HEATER_0_MAXTEMP 255
+#define HEATER_1_MAXTEMP 255
+#define HEATER_2_MAXTEMP 255
 #define BED_MAXTEMP 150
 
 // If your bed has low resistance e.g. .6 ohm and throws the fuse you can duty cycle it to reduce the
@@ -225,10 +225,15 @@
   #define PID_dT ((OVERSAMPLENR * 8.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
 
 // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
+// E3D V6 Hot End with 40w heater
+    #define  DEFAULT_Kp 12.29 
+    #define  DEFAULT_Ki 0.83   
+    #define  DEFAULT_Kd 45.32
+
 // QU-BD Hot End with 40w heater
-    #define  DEFAULT_Kp 35.51 
-    #define  DEFAULT_Ki 5.83   
-    #define  DEFAULT_Kd 54.10
+//    #define  DEFAULT_Kp 35.51 
+//    #define  DEFAULT_Ki 5.83   
+//    #define  DEFAULT_Kd 54.10
 // Ultimaker
 //    #define  DEFAULT_Kp 22.2
 //    #define  DEFAULT_Ki 1.08
